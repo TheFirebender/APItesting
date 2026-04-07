@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>API Sentinel</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--bg1:#161b22;--bg2:#1c2128;--bg3:#21262d;
+  --bd:#30363d;--bd2:#3d444d;
+  --tx:#e6edf3;--tx2:#8b949e;--tx3:#484f58;
+  --bl:#58a6ff;--bl2:#388bfd;--gr:#3fb950;--yw:#d29922;
+  --rd:#f85149;--pu:#bc8cff;--or:#e3b341;--cy:#39d353;
+  --r:6px;--mono:'JetBrains Mono','Fira Mono',monospace;
+}
+html,body,#app{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--bg);color:var(--tx);font-size:13px;line-height:1.5}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px}
+#app{display:flex;flex-direction:column}
+
+/* Header */
+.hdr{height:44px;background:var(--bg1);border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;padding:0 12px;gap:10px;flex-shrink:0}
+.logo{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--bl);
+  display:flex;align-items:center;gap:7px}
+.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--bl);
+  box-shadow:0 0 8px var(--bl);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.logo-sub{font-size:11px;color:var(--tx2);font-weight:400;font-family:sans-serif}
+.hdr-r{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+/* Layout */
+.ws{flex:1;display:flex;overflow:hidden}
+
+/* Sidebar */
+.sb{width:255px;background:var(--bg1);border-right:1px solid var(--bd);
+  display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.sb-tabs{display:flex;border-bottom:1px solid var(--bd);flex-shrink:0}
+.sb-tab{flex:1;padding:8px 4px;text-align:center;font-size:11px;font-weight:500;
+  color:var(--tx2);cursor:pointer;border-bottom:2px solid transparent;
+  transition:color .15s,border-color .15s;user-select:none}
+.sb-tab:hover{color:var(--tx)}
+.sb-tab.on{color:var(--bl);border-bottom-color:var(--bl)}
+.sb-body{flex:1;overflow-y:auto;padding:4px}
+
+/* Tree */
+.grp-hdr{padding:5px 8px;display:flex;align-items:center;justify-content:space-between;
+  color:var(--tx2);font-size:11px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.5px;cursor:pointer;border-radius:var(--r);user-select:none}
+.grp-hdr:hover{background:var(--bg2);color:var(--tx)}
+.grp-hdr-l{display:flex;align-items:center;gap:6px}
+.t-folder{padding:4px 8px 4px 14px;font-size:11px;font-weight:600;color:var(--tx3);
+  text-transform:uppercase;letter-spacing:.4px;margin-top:6px;display:flex;align-items:center;gap:5px}
+.t-item{padding:5px 8px 5px 20px;display:flex;align-items:center;gap:7px;
+  border-radius:var(--r);cursor:pointer;transition:background .1s;
+  color:var(--tx2);font-size:12px;position:relative}
+.t-item:hover{background:var(--bg3);color:var(--tx)}
+.t-item.on{background:rgba(88,166,255,.1);color:var(--tx)}
+.t-item.on::before{content:'';position:absolute;left:0;top:5px;bottom:5px;
+  width:2px;background:var(--bl);border-radius:1px}
+.t-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Method badges */
+.mb{font-family:var(--mono);font-size:9.5px;font-weight:700;padding:2px 5px;
+  border-radius:3px;min-width:42px;text-align:center;flex-shrink:0;letter-spacing:.3px}
+.GET{color:#3fb950;background:rgba(63,185,80,.12)}
+.POST{color:#58a6ff;background:rgba(88,166,255,.12)}
+.PUT{color:#e3b341;background:rgba(227,179,65,.12)}
+.PATCH{color:#bc8cff;background:rgba(188,140,255,.12)}
+.DELETE{color:#f85149;background:rgba(248,81,73,.12)}
+.HEAD{color:#39d353;background:rgba(57,211,83,.12)}
+.OPTIONS{color:#8b949e;background:rgba(139,148,158,.12)}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* URL bar */
+.url-bar{padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--bd);
+  display:flex;gap:6px;align-items:center;flex-shrink:0}
+.m-sel{background:var(--bg3);border:1px solid var(--bd);color:var(--tx);
+  padding:6px 8px;border-radius:var(--r);font-family:var(--mono);font-size:11px;
+  font-weight:700;cursor:pointer;min-width:84px;outline:none}
+.url-in{flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--tx);
+  padding:7px 10px;border-radius:var(--r);font-family:var(--mono);font-size:12.5px;
+  outline:none;transition:border-color .15s}
+.url-in:focus{border-color:var(--bl2);box-shadow:0 0 0 2px rgba(88,166,255,.1)}
+.url-in::placeholder{color:var(--tx3)}
+
+/* Buttons */
+.btn{padding:6px 14px;border-radius:var(--r);border:none;cursor:pointer;
+  font-size:12px;font-weight:600;transition:all .15s;display:inline-flex;
+  align-items:center;gap:5px}
+.btn:active{transform:scale(.97)}
+.btn-send{background:var(--bl2);color:#fff;min-width:82px}
+.btn-send:hover{background:var(--bl)}
+.btn-send:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-g{background:transparent;color:var(--tx2);border:1px solid var(--bd)}
+.btn-g:hover{background:var(--bg3);color:var(--tx)}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-ico{background:none;border:none;color:var(--tx3);cursor:pointer;
+  padding:3px 5px;border-radius:4px;font-size:13px;transition:color .15s,background .15s}
+.btn-ico:hover{color:var(--tx);background:var(--bg3)}
+
+/* Panes */
+.panes{flex:1;display:flex;overflow:hidden;min-height:0}
+.pane{display:flex;flex-direction:column;overflow:hidden}
+.pane-l{width:48%;min-width:280px;border-right:1px solid var(--bd)}
+.pane-r{flex:1}
+
+/* Tabs */
+.tabs{display:flex;background:var(--bg1);border-bottom:1px solid var(--bd);
+  padding:0 6px;flex-shrink:0}
+.tab{padding:8px 12px;cursor:pointer;font-size:11.5px;color:var(--tx2);
+  border-bottom:2px solid transparent;transition:color .15s,border-color .15s;
+  white-space:nowrap;user-select:none}
+.tab:hover{color:var(--tx)}
+.tab.on{color:var(--tx);border-bottom-color:var(--bl)}
+
+/* KV editor */
+.kv-wrap{flex:1;overflow-y:auto;padding:6px}
+.kv-row{display:flex;gap:5px;margin-bottom:3px;align-items:center}
+.kv-in{flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--tx);
+  padding:5px 8px;border-radius:4px;font-family:var(--mono);font-size:11.5px;outline:none}
+.kv-in:focus{border-color:var(--bd2)}
+.kv-in::placeholder{color:var(--tx3)}
+.kv-key{color:var(--bl)}
+.kv-foot{padding:6px 8px}
+.kv-cb{accent-color:var(--bl);cursor:pointer}
+
+/* Body / script */
+.body-bar{padding:5px 8px;background:var(--bg2);border-bottom:1px solid var(--bd);
+  display:flex;gap:8px;align-items:center;flex-shrink:0}
+.sel-sm{background:var(--bg3);border:1px solid var(--bd);color:var(--tx);
+  padding:3px 8px;border-radius:4px;font-size:11px;cursor:pointer;outline:none}
+.code-ta{flex:1;background:var(--bg);border:none;color:var(--tx);padding:10px 12px;
+  font-family:var(--mono);font-size:12px;line-height:1.65;resize:none;outline:none;tab-size:2}
+.code-ta::placeholder{color:var(--tx3)}
+.hint{padding:6px 10px;background:var(--bg1);border-bottom:1px solid var(--bd);
+  font-size:10.5px;color:var(--tx3);line-height:1.6;flex-shrink:0}
+.hint code{color:var(--bl);font-family:var(--mono);font-size:10px}
+
+/* Response */
+.resp-meta{padding:6px 12px;background:var(--bg2);border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;gap:14px;flex-shrink:0}
+.s-pill{font-family:var(--mono);font-size:12px;font-weight:700;padding:2px 8px;border-radius:4px}
+.s-green{color:var(--gr);background:rgba(63,185,80,.12)}
+.s-blue{color:#79c0ff;background:rgba(121,192,255,.12)}
+.s-yellow{color:var(--yw);background:rgba(210,153,34,.12)}
+.s-red{color:var(--rd);background:rgba(248,81,73,.12)}
+.meta-kv{font-size:11.5px;color:var(--tx2)}
+.meta-v{color:var(--tx);font-family:var(--mono)}
+.resp-bw{flex:1;overflow:auto}
+.resp-b{padding:10px 12px;font-family:var(--mono);font-size:12px;line-height:1.7;
+  white-space:pre-wrap;word-break:break-all;min-height:100%}
+.resp-hdrs{padding:10px 12px;font-family:var(--mono);font-size:11.5px;line-height:1.8;overflow:auto}
+
+.ph{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;gap:8px;color:var(--tx3)}
+.ph-ico{font-size:32px;opacity:.4}
+.ph-t{font-size:13px}
+.ph-s{font-size:11px}
+
+/* Assertions */
+.ass-list{padding:8px;overflow-y:auto}
+.ass-row{display:flex;align-items:center;gap:8px;padding:7px 10px;
+  border-radius:var(--r);margin-bottom:3px}
+.ass-ok{background:rgba(63,185,80,.07)}
+.ass-fail{background:rgba(248,81,73,.07)}
+.ass-name{flex:1;font-size:12px}
+.ass-msg{font-size:11px;color:var(--tx2);font-family:var(--mono)}
+
+/* Badge */
+.badge{display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;
+  border-radius:3px;margin-left:4px;font-family:var(--mono)}
+.b-ok{background:rgba(63,185,80,.2);color:var(--gr)}
+.b-err{background:rgba(248,81,73,.2);color:var(--rd)}
+
+/* History */
+.hi{padding:6px 10px;display:flex;align-items:center;gap:7px;cursor:pointer;
+  border-radius:var(--r);transition:background .1s}
+.hi:hover{background:var(--bg2)}
+.hi-name{flex:1;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hi-code{font-family:var(--mono);font-size:10.5px;font-weight:700;min-width:28px;text-align:right}
+.hi-ms{font-size:10px;color:var(--tx3);min-width:40px;text-align:right}
+
+/* Runner */
+.runner{padding:7px 10px;background:var(--bg1);border-top:1px solid var(--bd);
+  display:flex;align-items:center;gap:8px;flex-shrink:0}
+.run-info{flex:1}
+.run-stat{font-size:11px;color:var(--tx2)}
+.run-bar{height:3px;background:var(--bd);border-radius:2px;overflow:hidden;margin-top:4px}
+.run-fill{height:100%;background:var(--bl);border-radius:2px;transition:width .4s}
+
+/* Selects */
+.env-sel{background:var(--bg2);border:1px solid var(--bd);color:var(--tx);
+  padding:4px 8px;border-radius:var(--r);font-size:11.5px;cursor:pointer;outline:none}
+
+/* Spinner */
+.spin{width:14px;height:14px;border:2px solid var(--bd);border-top-color:var(--bl);
+  border-radius:50%;animation:sp .55s linear infinite;display:none}
+.spin.go{display:block}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* Toast */
+#toast{position:fixed;bottom:18px;right:18px;max-width:300px;background:var(--bg2);
+  border:1px solid var(--bd);border-radius:var(--r);padding:9px 14px;font-size:12px;
+  opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;
+  transform:translateY(6px);z-index:9999}
+#toast.show{opacity:1;transform:translateY(0)}
+#toast.ok{border-color:rgba(63,185,80,.5);color:var(--gr)}
+#toast.err{border-color:rgba(248,81,73,.5);color:var(--rd)}
+
+/* JSON highlight */
+.jk{color:#79c0ff}.js{color:#a5d6ff}.jn{color:#ffa657}.jb{color:#ff7b72}.jx{color:#8b949e}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+<script>
+const API='http://127.0.0.1:8765/api';
+const S={
+  collections:[],environments:[],history:[],
+  activeColId:null,activeReq:null,activeEnvId:null,
+  headers:[{k:'Content-Type',v:'application/json',on:true}],
+  params:[],
+  result:null,runSum:null,
+  sTab:'collections',rqTab:'headers',rsTab:'body',
+  loading:false,
+};
+
+/* ── helpers ── */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmtSz=b=>!b?'0 B':b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(1)+' MB';
+const sCol=c=>({green:'s-green',blue:'s-blue',yellow:'s-yellow',red:'s-red'}[c]||'');
+
+async function api(m,path,body){
+  const o={method:m,headers:{'Content-Type':'application/json'}};
+  if(body)o.body=JSON.stringify(body);
+  return fetch(API+path,o).then(r=>r.json());
+}
+const GET=p=>api('GET',p);
+const POST=(p,b)=>api('POST',p,b);
+const DEL=p=>api('DELETE',p);
+
+function hl(json){
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,m=>{
+    if(/^"/.test(m))return/:$/.test(m)?`<span class="jk">${esc(m)}</span>`:`<span class="js">${esc(m)}</span>`;
+    if(/true|false/.test(m))return`<span class="jb">${m}</span>`;
+    if(/null/.test(m))return`<span class="jx">${m}</span>`;
+    return`<span class="jn">${m}</span>`;
+  });
+}
+
+let toastT;
+function toast(msg,type=''){
+  const el=$('toast');el.textContent=msg;el.className='show '+type;
+  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2600);
+}
+
+/* ── init ── */
+async function init(){
+  const[c,e,h]=await Promise.all([
+    GET('/collections').catch(()=>({collections:[]})),
+    GET('/environments').catch(()=>({environments:[]})),
+    GET('/history?limit=50').catch(()=>({history:[]})),
+  ]);
+  S.collections=c.collections||[];
+  S.environments=e.environments||[];
+  S.history=h.history||[];
+  render();
+}
+
+/* ── render ── */
+function render(){$('app').innerHTML=buildApp();bindEvents();}
+
+function buildApp(){return`
+<div style="display:flex;flex-direction:column;height:100vh">
+  ${buildHeader()}
+  <div class="ws">${buildSidebar()}${buildMain()}</div>
+</div>`;}
+
+/* header */
+function buildHeader(){
+  const opts=S.environments.map(e=>`<option value="${e.id}"${S.activeEnvId===e.id?' selected':''}>${esc(e.name)}</option>`).join('');
+  return`<div class="hdr">
+  <div class="logo"><div class="logo-dot"></div>API Sentinel<span class="logo-sub">v1.0 · Maxim</span></div>
+  <div class="hdr-r">
+    <select class="env-sel" id="envSel"><option value="">Без окружения</option>${opts}</select>
+    <button class="btn btn-g btn-sm" id="btnNewCol">+ Коллекция</button>
+    <button class="btn btn-g btn-sm" id="btnNewEnv">+ Окружение</button>
+  </div>
+</div>`;}
+
+/* sidebar */
+function buildSidebar(){
+  const col=S.sTab==='collections';
+  return`<div class="sb">
+  <div class="sb-tabs">
+    <div class="sb-tab${col?' on':''}" data-stab="collections">Коллекции</div>
+    <div class="sb-tab${!col?' on':''}" data-stab="history">История</div>
+  </div>
+  <div class="sb-body">${col?buildTree():buildHistory()}</div>
+  ${S.activeColId?buildRunner():''}
+</div>`;}
+
+function buildTree(){
+  if(!S.collections.length)return`<div class="ph" style="padding:24px"><div class="ph-ico">📭</div><div class="ph-t">Нет коллекций</div></div>`;
+  return S.collections.map(col=>{
+    const open=S.activeColId===col.id;
+    const n=allReqs(col).length;
+    return`<div>
+      <div class="grp-hdr" data-col="${col.id}">
+        <span class="grp-hdr-l">${open?'▾':'▸'} ${esc(col.name)}</span>
+        <span style="font-size:10px;color:var(--tx3)">${n}</span>
+      </div>
+      ${open?buildTreeItems(col):''}
+    </div>`;
+  }).join('');}
+
+function buildTreeItems(col){
+  let h='';
+  for(const r of col.requests||[])h+=buildReqItem(r);
+  for(const f of col.folders||[]){
+    h+=`<div class="t-folder">📁 ${esc(f.name)}</div>`;
+    for(const r of f.requests||[])h+=buildReqItem(r);
+  }
+  return h;}
+
+function buildReqItem(r){
+  const on=S.activeReq?.id===r.id;
+  return`<div class="t-item${on?' on':''}" data-req='${JSON.stringify(r).replace(/'/g,"&#39;")}'>
+  <span class="mb ${r.method}">${r.method}</span>
+  <span class="t-name">${esc(r.name)}</span>
+</div>`;}
+
+function buildHistory(){
+  if(!S.history.length)return`<div class="ph" style="padding:24px"><div class="ph-ico">🕐</div><div class="ph-t">История пуста</div></div>`;
+  return S.history.map(h=>{
+    const code=h.response?.status_code||'—';
+    const ms=h.response?`${Math.round(h.response.elapsed_ms)}мс`:'';
+    return`<div class="hi" data-hist='${JSON.stringify(h).replace(/'/g,"&#39;")}'>
+    <span class="mb ${h.method||'GET'}">${h.method||'GET'}</span>
+    <span class="hi-name">${esc(h.request_name||h.url||'')}</span>
+    <span class="hi-code ${sCol(h.response?.color)}">${code}</span>
+    <span class="hi-ms">${ms}</span>
+  </div>`;
+  }).join('');}
+
+function buildRunner(){
+  const s=S.runSum;
+  const pct=s?s.success_rate:0;
+  const cl=s&&s.failed===0?'var(--gr)':'var(--rd)';
+  const stat=s
+    ?`<span style="color:${cl}">✓${s.passed} ✗${s.failed}</span> · ${s.avg_ms}мс · тесты ${s.passed_assertions}/${s.total_assertions}`
+    :'Запустить все запросы';
+  return`<div class="runner">
+  <button class="btn btn-send btn-sm" id="btnRun">▶ Run</button>
+  <div class="run-info">
+    <div class="run-stat">${stat}</div>
+    ${s?`<div class="run-bar"><div class="run-fill" style="width:${pct}%;background:${cl}"></div></div>`:''}
+  </div>
+</div>`;}
+
+/* URL bar */
+function buildUrlBar(){
+  const method=document.getElementById('mSel')?.value||'GET';
+  const url=document.getElementById('urlIn')?.value||'';
+  return`<div class="url-bar">
+  <select class="m-sel" id="mSel">
+    ${['GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS'].map(m=>`<option${method===m?' selected':''}>${m}</option>`).join('')}
+  </select>
+  <input class="url-in" id="urlIn" value="${esc(url)}"
+    placeholder="https://api.example.com/resource  ({{переменные}} поддерживаются)"
+    id="urlIn">
+  <div class="spin${S.loading?' go':''}" id="spin"></div>
+  <button class="btn btn-send" id="btnSend" ${S.loading?'disabled':''}>
+    ${S.loading?'…':'⚡ Отправить'}
+  </button>
+</div>`;}
+
+/* main */
+function buildMain(){return`<div class="main">${buildUrlBar()}<div class="panes">${buildReqPane()}${buildResPane()}</div></div>`;}
+
+/* request pane */
+function buildReqPane(){
+  const tabs=['headers','params','body','pre','test'];
+  const lbl={headers:'Заголовки',params:'Параметры',body:'Тело',pre:'Pre-script',test:'Test Script'};
+  const tabsH=tabs.map(t=>`<div class="tab${S.rqTab===t?' on':''}" data-rtab="${t}">${lbl[t]}</div>`).join('');
+  return`<div class="pane pane-l"><div class="tabs">${tabsH}</div>${buildReqContent()}</div>`;}
+
+function buildReqContent(){
+  if(S.rqTab==='headers')return buildKV('headers',S.headers);
+  if(S.rqTab==='params') return buildKV('params',S.params);
+  if(S.rqTab==='body')   return buildBody();
+  if(S.rqTab==='pre')    return buildScript('pre','preScript',
+    '# Pre-request Script\n# pm.environment.set("token", "Bearer xyz")\n# pm.headers["X-Custom"] = "value"',
+    'Доступно: <code>pm.environment.set(k,v)</code>, <code>pm.globals.set(k,v)</code>, <code>pm.headers["K"]="V"</code>');
+  if(S.rqTab==='test')   return buildScript('test','testScript',
+    "pm.test('Статус 200', lambda: pm.expect(pm.response.status).to.equal(200))\npm.test('JSON объект', lambda: pm.expect(pm.response.json()).to.a('object'))\n# d = pm.response.json()\n# pm.environment.set('id', str(d['id']))",
+    'Доступно: <code>pm.test(name, fn)</code>, <code>pm.expect(val).to.equal/above/below/include/a/ok()</code>');}
+
+function buildKV(type,rows){
+  const r=rows.map((row,i)=>`<div class="kv-row">
+  <input type="checkbox" class="kv-cb" ${row.on?'checked':''} data-kvc="${type}:${i}">
+  <input class="kv-in kv-key" value="${esc(row.k)}" placeholder="Ключ" data-kvk="${type}:${i}">
+  <input class="kv-in" value="${esc(row.v)}" placeholder="Значение" data-kvv="${type}:${i}">
+  <button class="btn-ico" data-kvd="${type}:${i}">✕</button>
+</div>`).join('');
+  return`<div class="kv-wrap" id="${type}Ed">${r}</div><div class="kv-foot"><button class="btn btn-g btn-sm" data-kvadd="${type}">+ Добавить</button></div>`;}
+
+function buildBody(){
+  const v=document.getElementById('bodyTa')?.value||'';
+  const f=document.getElementById('bodyFmt')?.value||'json';
+  return`<div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+  <div class="body-bar">
+    <span style="font-size:11px;color:var(--tx2)">Формат:</span>
+    <select class="sel-sm" id="bodyFmt">
+      ${['none','json','text','xml','form','x-www-form-urlencoded'].map(x=>`<option value="${x}"${f===x?' selected':''}>${x}</option>`).join('')}
+    </select>
+    <button class="btn btn-g btn-sm" id="btnFmt">⇄ Format</button>
+  </div>
+  <textarea class="code-ta" id="bodyTa" style="flex:1" placeholder='{\n  "key": "value"\n}'>${esc(v)}</textarea>
+</div>`;}
+
+function buildScript(type,id,ph,hint){
+  const v=document.getElementById(id)?.value||'';
+  return`<div style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+  <div class="hint">${hint}</div>
+  <textarea class="code-ta" id="${id}" style="flex:1" placeholder="${ph}">${esc(v)}</textarea>
+</div>`;}
+
+/* response pane */
+function buildResPane(){
+  const r=S.result;
+  const ass=r?.assertions||[];
+  const ok=ass.filter(a=>a.passed).length;
+  const tot=ass.length;
+  const badge=tot?`<span class="badge ${ok===tot?'b-ok':'b-err'}">${ok}/${tot}</span>`:'';
+  const tabs=[{k:'body',l:'Тело'},{k:'headers',l:'Заголовки'},{k:'assertions',l:`Тесты${badge}`}];
+  const th=tabs.map(t=>`<div class="tab${S.rsTab===t.k?' on':''}" data-rstab="${t.k}">${t.l}</div>`).join('');
+  return`<div class="pane pane-r">
+  ${r?buildResMeta(r):''}
+  <div class="tabs">${th}</div>
+  ${buildResContent()}
+</div>`;}
+
+function buildResMeta(r){
+  if(!r.response)return`<div class="resp-meta"><span style="color:var(--rd);font-size:12px">✗ ${esc(r.error||'')}</span></div>`;
+  const resp=r.response;
+  const cc=sCol(resp.color);
+  const assOk=(r.assertions||[]).filter(a=>a.passed).length,assT=(r.assertions||[]).length;
+  return`<div class="resp-meta">
+  <span class="s-pill ${cc}">${resp.status_code} ${esc(resp.status_text)}</span>
+  <span class="meta-kv">Время: <span class="meta-v">${resp.elapsed_ms}мс</span></span>
+  <span class="meta-kv">Размер: <span class="meta-v">${fmtSz(resp.body_size)}</span></span>
+  ${assT?`<span class="meta-kv">Тесты: <span class="meta-v" style="color:${assOk===assT?'var(--gr)':'var(--rd)'}">${assOk}/${assT}</span></span>`:''}
+</div>`;}
+
+function buildResContent(){
+  const r=S.result;
+  if(S.rsTab==='body'){
+    if(!r)return`<div class="ph"><div class="ph-ico">⚡</div><div class="ph-t">Готов к работе</div><div class="ph-s">Введите URL и нажмите «Отправить»</div></div>`;
+    if(!r.response)return`<div class="resp-bw"><pre class="resp-b" style="color:var(--rd)">${esc(r.error||'')}</pre></div>`;
+    let body=r.response.body,rendered=esc(body);
+    if(r.response.is_json){try{rendered=hl(JSON.stringify(JSON.parse(body),null,2))}catch{}}
+    return`<div class="resp-bw"><pre class="resp-b">${rendered}</pre></div>`;}
+  if(S.rsTab==='headers'){
+    if(!r?.response)return`<div class="ph"><div class="ph-ico">🗂</div><div class="ph-t">Нет данных</div></div>`;
+    const lines=Object.entries(r.response.headers||{}).map(([k,v])=>`<span class="jk">${esc(k)}</span>: ${esc(v)}`).join('\n');
+    return`<div class="resp-hdrs"><pre>${lines}</pre></div>`;}
+  if(S.rsTab==='assertions'){
+    const ass=r?.assertions||[];
+    if(!ass.length)return`<div class="ph"><div class="ph-ico">🧪</div><div class="ph-t">Нет тестов</div><div class="ph-s">Добавьте Test Script</div></div>`;
+    return`<div class="ass-list">${ass.map(a=>`<div class="ass-row ${a.passed?'ass-ok':'ass-fail'}">
+    <span>${a.passed?'✅':'❌'}</span>
+    <span class="ass-name">${esc(a.name)}</span>
+    ${a.message?`<span class="ass-msg">${esc(a.message)}</span>`:''}
+  </div>`).join('')}</div>`;}}
+
+/* ── bind events ── */
+function bindEvents(){
+  // Sidebar tabs
+  document.querySelectorAll('[data-stab]').forEach(el=>el.addEventListener('click',()=>{S.sTab=el.dataset.stab;render();}));
+  // Collection toggle
+  document.querySelectorAll('[data-col]').forEach(el=>el.addEventListener('click',()=>{
+    S.activeColId=S.activeColId===el.dataset.col?null:el.dataset.col;S.runSum=null;render();}));
+  // Load request
+  document.querySelectorAll('[data-req]').forEach(el=>el.addEventListener('click',()=>loadReq(JSON.parse(el.dataset.req))));
+  // Load history
+  document.querySelectorAll('[data-hist]').forEach(el=>el.addEventListener('click',()=>{
+    const h=JSON.parse(el.dataset.hist);S.result=h;
+    setTimeout(()=>{const ms=document.getElementById('mSel');const ui=document.getElementById('urlIn');
+    if(ms)ms.value=h.method||'GET';if(ui)ui.value=h.url||'';renderResPaneOnly();},0);}));
+  // Req tabs
+  document.querySelectorAll('[data-rtab]').forEach(el=>el.addEventListener('click',()=>{S.rqTab=el.dataset.rtab;reRenderReqContent();}));
+  // Res tabs
+  document.querySelectorAll('[data-rstab]').forEach(el=>el.addEventListener('click',()=>{S.rsTab=el.dataset.rstab;renderResPaneOnly();}));
+  // KV
+  document.querySelectorAll('[data-kvk]').forEach(el=>el.addEventListener('input',()=>{const[t,i]=el.dataset.kvk.split(':');S[t][i].k=el.value;}));
+  document.querySelectorAll('[data-kvv]').forEach(el=>el.addEventListener('input',()=>{const[t,i]=el.dataset.kvv.split(':');S[t][i].v=el.value;}));
+  document.querySelectorAll('[data-kvc]').forEach(el=>el.addEventListener('change',()=>{const[t,i]=el.dataset.kvc.split(':');S[t][i].on=el.checked;}));
+  document.querySelectorAll('[data-kvd]').forEach(el=>el.addEventListener('click',()=>{const[t,i]=el.dataset.kvd.split(':');S[t].splice(+i,1);reRenderKV(t);}));
+  document.querySelectorAll('[data-kvadd]').forEach(el=>el.addEventListener('click',()=>{S[el.dataset.kvadd].push({k:'',v:'',on:true});reRenderKV(el.dataset.kvadd);}));
+  // Buttons
+  const bs=$('btnSend');if(bs)bs.onclick=send;
+  const bf=$('btnFmt');if(bf)bf.onclick=fmtJson;
+  const br=$('btnRun');if(br)br.onclick=runCol;
+  const bc=$('btnNewCol');if(bc)bc.onclick=newCollection;
+  const be=$('btnNewEnv');if(be)be.onclick=newEnv;
+  const es=$('envSel');if(es)es.onchange=()=>{S.activeEnvId=es.value||null;toast(S.activeEnvId?'Окружение активно':'Окружение отключено');};
+  // URL enter
+  const ui=$('urlIn');if(ui){ui.addEventListener('keydown',e=>{if(e.key==='Enter')send();});}
+}
+
+/* partial re-renders */
+function reRenderKV(type){
+  const id=type==='headers'?'headersEd':'paramsEd';
+  const el=$(id);if(!el)return;
+  const rows=S[type];
+  el.innerHTML=rows.map((row,i)=>`<div class="kv-row">
+  <input type="checkbox" class="kv-cb"${row.on?' checked':''} data-kvc="${type}:${i}">
+  <input class="kv-in kv-key" value="${esc(row.k)}" placeholder="Ключ" data-kvk="${type}:${i}">
+  <input class="kv-in" value="${esc(row.v)}" placeholder="Значение" data-kvv="${type}:${i}">
+  <button class="btn-ico" data-kvd="${type}:${i}">✕</button>
+</div>`).join('');
+  el.querySelectorAll('[data-kvk]').forEach(e=>e.addEventListener('input',()=>{const[t,i]=e.dataset.kvk.split(':');S[t][i].k=e.value;}));
+  el.querySelectorAll('[data-kvv]').forEach(e=>e.addEventListener('input',()=>{const[t,i]=e.dataset.kvv.split(':');S[t][i].v=e.value;}));
+  el.querySelectorAll('[data-kvc]').forEach(e=>e.addEventListener('change',()=>{const[t,i]=e.dataset.kvc.split(':');S[t][i].on=e.checked;}));
+  el.querySelectorAll('[data-kvd]').forEach(e=>e.addEventListener('click',()=>{const[t,i]=e.dataset.kvd.split(':');S[t].splice(+i,1);reRenderKV(t);}));}
+
+function reRenderReqContent(){
+  const pl=document.querySelector('.pane-l');if(!pl)return;
+  const tabs=pl.querySelector('.tabs');if(!tabs)return;
+  // update tab active state
+  pl.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.rtab===S.rqTab));
+  // replace content (everything after tabs)
+  let old=pl.querySelector('.kv-wrap,.body-bar,[style*="flex-direction"]');
+  if(old)old.remove();
+  const tmp=document.createElement('div');
+  tmp.style.cssText='display:flex;flex-direction:column;flex:1;overflow:hidden';
+  tmp.innerHTML=buildReqContent();
+  pl.appendChild(tmp.firstElementChild||tmp);
+  bindEvents();}
+
+function renderResPaneOnly(){
+  const rp=document.querySelector('.pane-r');if(!rp)return;
+  const r=S.result;
+  const ass=r?.assertions||[];
+  const ok=ass.filter(a=>a.passed).length,tot=ass.length;
+  const badge=tot?`<span class="badge ${ok===tot?'b-ok':'b-err'}">${ok}/${tot}</span>`:'';
+  const tabs=[{k:'body',l:'Тело'},{k:'headers',l:'Заголовки'},{k:'assertions',l:`Тесты${badge}`}];
+  const th=tabs.map(t=>`<div class="tab${S.rsTab===t.k?' on':''}" data-rstab="${t.k}">${t.l}</div>`).join('');
+  rp.innerHTML=(r?buildResMeta(r):'')+`<div class="tabs">${th}</div>`+buildResContent();
+  rp.querySelectorAll('[data-rstab]').forEach(el=>el.addEventListener('click',()=>{S.rsTab=el.dataset.rstab;renderResPaneOnly();}));}
+
+/* ── actions ── */
+function loadReq(r){
+  S.activeReq=r;S.result=null;
+  setTimeout(()=>{
+    const ms=$('mSel'),ui=$('urlIn');
+    if(ms)ms.value=r.method||'GET';
+    if(ui)ui.value=r.url||'';
+    S.headers=Object.entries(r.headers||{}).map(([k,v])=>({k,v,on:true}));
+    if(!S.headers.length)S.headers=[{k:'Content-Type',v:'application/json',on:true}];
+    S.params=Object.entries(r.params||{}).map(([k,v])=>({k,v,on:true}));
+    const bf=$('bodyFmt'),bt=$('bodyTa'),ps=$('preScript'),ts=$('testScript');
+    if(bf)bf.value=r.body_format||'json';
+    if(bt)bt.value=r.body||'';
+    if(ps)ps.value=r.pre_script||'';
+    if(ts)ts.value=r.test_script||'';
+    render();
+  },0);}
+
+function allReqs(col){return[...(col.requests||[]),...(col.folders||[]).flatMap(f=>f.requests||[])];}
+
+async function send(){
+  const url=$('urlIn')?.value?.trim();
+  if(!url){toast('Введите URL','err');return;}
+  S.loading=true;S.result=null;
+
+  const hdrs={};S.headers.filter(r=>r.on&&r.k).forEach(r=>{hdrs[r.k]=r.v;});
+  const prms={};S.params.filter(r=>r.on&&r.k).forEach(r=>{prms[r.k]=r.v;});
+  let envVars={};
+  if(S.activeEnvId){const e=S.environments.find(e=>e.id===S.activeEnvId);if(e)envVars=e.variables||{};}
+
+  const payload={
+    method:$('mSel')?.value||'GET',url,
+    headers:hdrs,params:prms,
+    body_format:$('bodyFmt')?.value||'none',
+    body:$('bodyTa')?.value||null,
+    pre_script:$('preScript')?.value||null,
+    test_script:$('testScript')?.value||null,
+    environment_id:S.activeEnvId||null,env_vars:envVars,
+  };
+
+  // show spinner
+  const spin=$('spin');if(spin)spin.classList.add('go');
+  const btn=$('btnSend');if(btn){btn.disabled=true;btn.textContent='…';}
+
+  try{
+    S.result=await POST('/execute',payload);
+    S.history=(await GET('/history?limit=50').catch(()=>({history:[]}))).history||[];
+  }catch(e){
+    S.result={request_name:url,response:null,error:'Ошибка связи с сервером: '+e.message,assertions:[],passed:false};
+    toast('Ошибка связи','err');
+  }finally{
+    S.loading=false;render();
+  }}
+
+async function runCol(){
+  if(!S.activeColId)return;
+  try{
+    const r=await POST('/run',{collection_id:S.activeColId,environment_id:S.activeEnvId||null});
+    S.runSum=r.summary;
+    const s=r.summary;
+    toast(`${s.passed}/${s.total} пройдено · ${s.avg_ms}мс`,s.failed===0?'ok':'err');
+    render();
+  }catch(e){toast('Ошибка запуска','err');}}
+
+async function newCollection(){
+  const name=prompt('Название коллекции:');if(!name)return;
+  await POST('/collections',{name,requests:[],folders:[],variables:{}});
+  S.collections=(await GET('/collections').catch(()=>({collections:[]}))).collections||[];
+  render();toast(`Коллекция «${name}» создана`,'ok');}
+
+async function newEnv(){
+  const name=prompt('Название окружения:');if(!name)return;
+  const raw=prompt('Переменные JSON (или пусто):\n{"BASE_URL":"https://api.example.com"}','{}');
+  let vars={};try{vars=JSON.parse(raw||'{}')}catch{}
+  await POST('/environments',{name,variables:vars});
+  S.environments=(await GET('/environments').catch(()=>({environments:[]}))).environments||[];
+  render();toast(`Окружение «${name}» создано`,'ok');}
+
+function fmtJson(){const ta=$('bodyTa');if(!ta)return;
+  try{ta.value=JSON.stringify(JSON.parse(ta.value),null,2);}catch{toast('Невалидный JSON','err');}}
+
+init();
+</script>
+</body>
+</html>
